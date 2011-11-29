@@ -1,0 +1,3 @@
+[submodule "miro"]
+	path = miro
+	url = git@github.com:jbschne/miro.git
