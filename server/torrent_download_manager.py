@@ -5,6 +5,7 @@ import sys
 import re
 import threading
 import Queue
+import time
 
 import libtorrent as lt
 from miro import transcode
@@ -34,9 +35,12 @@ class TorrentDownloadManager:
 
         # torrent_handle must be set by instantiating class
         self.torrent_handle = None
-        self.piece_completed_map = list()
+        self.piece_completed_map = dict()
         self.piece_buffers = dict()
         self.is_transcoding = False
+        self.transcode_object = None
+        self.transcode_writer = None
+        self.completed_piece_buffers_loaded = False
 
     def select_video_files(self):
         # select only the video files for download
@@ -49,12 +53,7 @@ class TorrentDownloadManager:
             if is_video_file(f.path):
                 logging.info('identified media file %d: %s' % (index, f.path))
                 self.video_files[index] = f
-                # identify lowest piece
                 start_piece = self.min_piece_for_file_index(index)
-                if self.next_piece_index is None:
-                    self.next_piece_index = start_piece
-                else:
-                    self.next_piece_index = min(self.next_piece_index, start_piece)
             else:
                 file_priorities[index] = 0
 
@@ -70,15 +69,21 @@ class TorrentDownloadManager:
 
         self.select_video_files()
         self.torrent_info = self.torrent_handle.get_torrent_info()
+        self.torrent_name = self.torrent_info.name()
         self.num_pieces = self.torrent_info.num_pieces()
         # setup completed piece mapping
-        for piece_index in range(self.num_pieces):
-            self.piece_completed_map.append(False)
 
         self.torrent_handle.set_sequential_download(True)
         self.torrent_handle.resume()
-        
+
+    def check_piece_buffers(self):
+        # checks if existing pieces have been loaded, loads them if not
+        if not self.completed_piece_buffers_loaded:
+            self._load_completed_piece_buffers()
+            self.completed_piece_buffers_loaded = True
+
     def handle_piece_finished(self, piece_index):
+        logging.debug('piece %d of %s downloaded' % (piece_index, self.torrent_name))
         self.piece_completed_map[piece_index] = True
         
         piece_size = self.torrent_info.piece_size(piece_index)
@@ -100,8 +105,6 @@ class TorrentDownloadManager:
         # find relevant part of piece
         # load piece into buffer (check ordering)
         # pipe to ffmpeg
-        # TODO: this scheme will not work for multiple media files in one piece, which is common.
-        #       Solution: index self.piece_buffers by (piece_index, file_index)
         piece_size = self.torrent_info.piece_size(piece_index)
         file_slices = self.torrent_info.map_block(piece_index, 0, piece_size)
         # len(file_slices) will be > 1 if multiple files in piece
@@ -110,50 +113,88 @@ class TorrentDownloadManager:
                 # find which part of piece is part of this file
                 peer_request = self.torrent_info.map_file(file_slice.file_index, 0,
                                                           file_slice.size)
+                file_buffer = piece_buffer
                 if peer_request.piece == piece_index:
                     # adjust piece_buffer to start at beginning of media file
                     logging.debug('piece %d contains the start of a media file' %
                                   piece_index)
-                    piece_buffer = piece_buffer[peer_request.start:]
+                    file_buffer = file_buffer[peer_request.start:]
 
                 if len(piece_buffer) > peer_request.length:
                     # adjust piece_buffer to end at end of media file
                     logging.debug('piece %d contains the end of a media file' % piece_index)
-                    piece_buffer = piece_buffer[:peer_request.length]
+                    file_buffer = file_buffer[:peer_request.length]
 
-        self.piece_buffers[piece_index] = piece_buffer
-        self.write_available_buffer_to_pipe()
+                self.piece_buffers[(piece_index, file_slice.file_index)] = file_buffer
+
+        logging.debug('piece %d of %s read' % (piece_index, self.torrent_name))
+
+        if self.is_transcoding:
+            self.write_available_buffer_to_pipe()
 
     def write_available_buffer_to_pipe(self):
         # write as many piece_buffers to the pipe sequentially as available
         # might want to add some code to assert self.piece_buffers isn't leaking
-        while self.next_piece_index in self.piece_buffers:
-            if not self.is_transcoding:
-                # first piece, setup transcode
-                self.setup_transcode()
-                self.is_transcoding = True
-            self.transcode_writer.write(self.piece_buffers[self.next_piece_index])
-            logging.debug('piece %d written to pipe' % self.next_piece_index)
-            del self.piece_buffers[self.next_piece_index]
-            # TODO: iterate to next valid piece, there may be gaps between media files
+        while (self.next_piece_index, self.transcode_file_index) in self.piece_buffers:
+            piece_buffer = self.piece_buffers[(self.next_piece_index, self.transcode_file_index)]
+            self.transcode_writer.write(piece_buffer)
+            logging.debug('piece %d with file %d written to pipe' % (self.next_piece_index,
+                                                                     self.transcode_file_index))
+            del self.piece_buffers[(self.next_piece_index, self.transcode_file_index)]
             self.next_piece_index += 1
 
-    def setup_transcode(self):
+    def _load_completed_piece_buffers(self):
+        # update piece_copmleted_map
+        # ensure that all completed pieces are buffered
+        torrent_status = self.torrent_handle.status()
+        pieces = torrent_status.pieces
+        num_pieces = torrent_status.num_pieces
+
+        # XXX: look into iterating on pieces, might be faster
+        for piece_index in range(self.num_pieces):
+            if pieces[piece_index]:
+                self.torrent_handle.read_piece(piece_index)
+                self.piece_completed_map[piece_index] = True
+            else:
+                self.piece_completed_map[piece_index] = False
+            
+
+    def _setup_transcode(self):
         # TODO: make this work for multiple files. don't rely on path, pipe
+        # Must be run after the first piece of media has been downloaded
+        
+        # wait for first piece to become available
+        # TODO: don't make this rely on sleep
+        first_piece = self.min_piece_for_file_index(self.transcode_file_index)
+        while (first_piece, self.transcode_file_index) not in self.piece_buffers:
+            logging.debug('first piece not available, waiting on download')
+            time.sleep(1)
+
         media_path = self.save_directory_path + '/' + self.video_files[0].path
         yes, media_info = transcode.needs_transcode(media_path)
         logging.debug('media info: %s', media_info)
         assert(media_info)
         self.transcode_object = transcode.TranscodeObject(True, media_info,
                                                           request_path_func)
+        self.playlist = self.transcode_object.playlist
         self.transcode_writer = TranscodeWriter(self.transcode_object)
         self.transcode_writer.start()
+
+    def start_transcode(self, file_index=0):
+        self.transcode_file_index = file_index
+        self.next_piece_index = self.min_piece_for_file_index(file_index)
+        self._setup_transcode()
         self.transcode_object.transcode()
+        # XXX make is_transcoding an event to make thread safe?
+        self.is_transcoding = True
+        logging.info('transcoding started')
 
     def shutdown(self):
         if self.transcode_writer:
             self.transcode_writer.stop()
 
+
+# TODO: integrate this into the subclass of TranscodeObject
 class TranscodeWriter(threading.Thread):
     ''' TranscodeWriter
     Spawns a new thread to buffer data and write to TranscodeObject
@@ -173,6 +214,9 @@ class TranscodeWriter(threading.Thread):
         while self.is_running.is_set():
             chunk = self.buffer_queue.get()
             self._write(chunk)
+        # XXX move this to TranscodeObject subclass shutdown
+        self.transcode_object.input_pipe.flush()
+        self.transcode_object.input_pipe.close()
    
     def _write(self, chunk):
         # for this thread to use, writes chunk to transcode_object

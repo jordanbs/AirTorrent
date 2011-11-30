@@ -20,7 +20,8 @@ class TorrentSessionManager(threading.Thread):
     def _setup(self):
         self.session = lt.session()
         self.session.set_alert_mask(lt.alert.category_t.progress_notification |
-                                    lt.alert.category_t.storage_notification)
+                                    lt.alert.category_t.storage_notification |
+                                    lt.alert.category_t.status_notification)
         self.torrent_downloads = dict()
         self.save_directory_path = '/home/jbschne/media'
 
@@ -59,25 +60,25 @@ class TorrentSessionManager(threading.Thread):
             alert = self.session.pop_alert()
             if alert is None:
                 continue
+            
+            if not isinstance(alert, lt.torrent_alert):
+                continue
+
+            # identify torrent_download_manager
+            torrent_info = alert.handle.get_torrent_info()
+            torrent_info_hash = str(torrent_info.info_hash())
+            torrent_download_manager = self.torrent_downloads[torrent_info_hash]
+
             if type(alert) is lt.piece_finished_alert:
                 # identify torrent_download_manager and handle piece
-                torrent_info = alert.handle.get_torrent_info()
-                torrent_name = torrent_info.name()
-                logging.debug('piece %d of %s downloaded' % (alert.piece_index, torrent_name))
-                
-                torrent_info_hash = str(torrent_info.info_hash())
-                torrent_download_manager = self.torrent_downloads[torrent_info_hash]
                 torrent_download_manager.handle_piece_finished(alert.piece_index)
 
             elif type(alert) is lt.read_piece_alert:
-                torrent_info = alert.handle.get_torrent_info()
-                torrent_name = torrent_info.name()
-                logging.debug('piece %d of %s read' % (alert.piece, torrent_name))
-
-                torrent_info_hash = str(torrent_info.info_hash())
-                torrent_download_manager = self.torrent_downloads[torrent_info_hash]
                 torrent_download_manager.handle_piece_read(alert.buffer, alert.piece, alert.size)
-
+            
+            elif type(alert) is lt.torrent_resumed_alert:
+                torrent_download_manager.check_piece_buffers()
+                
         self.shutdown()
 
     def shutdown(self):
