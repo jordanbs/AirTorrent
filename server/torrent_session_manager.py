@@ -13,17 +13,17 @@ class TorrentSessionManager(threading.Thread):
     download and transcode
     '''
 
-    def __init__(self):
+    def __init__(self, save_directory_path):
         super(TorrentSessionManager, self).__init__()
-        self._setup()
+        self._setup(save_directory_path)
 
-    def _setup(self):
+    def _setup(self, save_directory_path):
         self.session = lt.session()
         self.session.set_alert_mask(lt.alert.category_t.progress_notification |
                                     lt.alert.category_t.storage_notification |
                                     lt.alert.category_t.status_notification)
         self.torrent_downloads = dict()
-        self.save_directory_path = '/home/jbschne/media'
+        self.save_directory_path = save_directory_path
 
     def _start_listening(self):
         self.session.listen_on(10000, 20000)

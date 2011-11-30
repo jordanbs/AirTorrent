@@ -9,6 +9,7 @@ import torrent_session_manager
 logging.basicConfig(level=logging.DEBUG)
 
 path = '/home/jbschne/torrents/The.Pleasure.Garden.1925.DVDRip.x264-DiRTY.torrent'
+save_path = '/home/jbschne/media'
 playlist = None
 global tsm
 
@@ -45,7 +46,7 @@ class HLSRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 try:
-    tsm = torrent_session_manager.TorrentSessionManager()
+    tsm = torrent_session_manager.TorrentSessionManager(save_path)
     tsm.start()
     tsm.add_download(path)
     
