@@ -1,10 +1,12 @@
 
 
-import libtorrent as lt
 import logging
 import sys
 import re
+import threading
+import Queue
 
+import libtorrent as lt
 from miro import transcode
 
 class TorrentDownloadManager:
@@ -130,7 +132,7 @@ class TorrentDownloadManager:
                 # first piece, setup transcode
                 self.setup_transcode()
                 self.is_transcoding = True
-            self.transcode_object.input_pipe.write(self.piece_buffers[self.next_piece_index])
+            self.transcode_writer.write(self.piece_buffers[self.next_piece_index])
             logging.debug('piece %d written to pipe' % self.next_piece_index)
             del self.piece_buffers[self.next_piece_index]
             # TODO: iterate to next valid piece, there may be gaps between media files
@@ -144,8 +146,43 @@ class TorrentDownloadManager:
         assert(media_info)
         self.transcode_object = transcode.TranscodeObject(True, media_info,
                                                           request_path_func)
+        self.transcode_writer = TranscodeWriter(self.transcode_object)
+        self.transcode_writer.start()
         self.transcode_object.transcode()
 
+    def shutdown(self):
+        if self.transcode_writer:
+            self.transcode_writer.stop()
+
+class TranscodeWriter(threading.Thread):
+    ''' TranscodeWriter
+    Spawns a new thread to buffer data and write to TranscodeObject
+    '''
+    def __init__(self, transcode_object):
+        super(TranscodeWriter, self).__init__()
+        self.transcode_object = transcode_object
+        self.buffer_queue = Queue.Queue()
+        self.is_running = threading.Event()
+
+    def write(self, chunk):
+        # appends chunk to the write buffer
+        self.buffer_queue.put(chunk)
+
+    def run(self):
+        self.is_running.set()
+        while self.is_running.is_set():
+            chunk = self.buffer_queue.get()
+            self._write(chunk)
+   
+    def _write(self, chunk):
+        # for this thread to use, writes chunk to transcode_object
+        logging.debug('writing chunk of size %d to %s' % (len(chunk),
+                                                          type(self.transcode_object)))
+        self.transcode_object.input_pipe.write(chunk)
+
+    def stop(self):
+        self.is_running.clear()
+        self.buffer_queue.put(None)
 
 def request_path_func(itemid, enclosure):
     return 'filler' + enclosure

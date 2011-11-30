@@ -14,7 +14,7 @@ try:
     tsm.start()
     tsm.add_download(path)
 
-    test_file = open('/tmp/test_mov.ts', 'a')
+    test_file = open('/tmp/test_mov.ts', 'w')
     while True:
         time.sleep(20)
         for torrent_download in tsm.torrent_downloads.values():

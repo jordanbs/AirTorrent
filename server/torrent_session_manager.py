@@ -77,3 +77,10 @@ class TorrentSessionManager(threading.Thread):
                 torrent_info_hash = str(torrent_info.info_hash())
                 torrent_download_manager = self.torrent_downloads[torrent_info_hash]
                 torrent_download_manager.handle_piece_read(alert.buffer, alert.piece, alert.size)
+
+        self.shutdown()
+
+    def shutdown(self):
+        for torrent_download in self.torrent_downloads.values():
+            torrent_download.shutdown()
+
