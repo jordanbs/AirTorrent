@@ -2,7 +2,7 @@ import cherrypy
 import os
 import ConfigParser
 import base64
-
+import sqlite3
 
 
 class AirTorrent:
@@ -13,158 +13,56 @@ class AirTorrent:
         value = '''
 <html>
 <head>
-<link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
-<script type="text/javascript">
-  function updateAJAX(div, pageLink){
-    var xmlhttp;
-      if (window.XMLHttpRequest){
-      // code for IE7+, Firefox, Chrome, Opera, Safari
-        xmlhttp=new XMLHttpRequest();
-      }
-      else{// code for IE6, IE5
-        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-      }
-      xmlhttp.onreadystatechange=function(){
-        if (xmlhttp.readyState==4 && xmlhttp.status==200){
-          document.getElementById(div).innerHTML=xmlhttp.responseText;
-        }
-      }
-      xmlhttp.open("GET",pageLink,true);
-      xmlhttp.send();
-  }
-</script>
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
-        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
-<script type="text/javascript">
-$(document).ready(function(){
-
-  window.clickedFolder = $("div.listLinkDiv:first");
-  window.selectedFolderColor = "grey"
-  window.clickedFolderColor = "#222222"
-  window.normalFolderColor = "black"
-  $(".listLinkDiv").live('click',function(){
-    $(window.clickedFolder).css("background-color", window.normalFolderColor);
-    $(this).css("background-color", window.clickedFolderColor);
-    window.clickedFolder = this;
-  });
-  
-  $(".listLinkDiv").live('mouseover', function(){
-    if(this==window.clickedFolder){
-      $(this).css("background-color", window.clickedFolderColor);
-    }
-    else{
-      $(this).css("background-color", window.selectedFolderColor);
-    }
-  });
-  
-  $(".listLinkDiv").live('mouseout', function(){
-    if(this==window.clickedFolder){
-      $(this).css("background-color", window.clickedFolderColor);
-    }
-    else{
-      $(this).css("background-color", window.normalFolderColor);
-    }
-  });
-});
-</script>
+<link href="static/css/stylesheet.css" type="text/css" rel="stylesheet" />  
+<link href="static/css/table.css" type="text/css" rel="stylesheet" />
+<link href="static/css/upload.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="static/scripts/enhance.js"></script>        
+<script type="text/javascript" src="static/scripts/complete.min.js"></script>
+<script type="text/javascript" language="javascript" src="static/scripts/jquery.js"></script>
+<script type="text/javascript" language="javascript" src="static/scripts/jquery.dataTables.js"></script>
+<script type="text/javascript" language="javascript" src="static/scripts/ColReorder.js"></script>
+<script type="text/javascript" language="javascript" src="static/scripts/AirTorrentWebUI.js"></script>
+<script type="text/javascript" src="static/scripts/jQuery.fileinput.js"></script>
+<script type="text/javascript" src="static/scripts/example.js"></script>
 </head>
-<body>'''
-        value+=self.leftListContent()
+<body>
+'''
+        value+=self.generateBody()
         return value;
     index.exposed = True
 
-    def printFiles(self, sysdir):
-        value=""
-        sysdir = sysdir+"="
-        sysdir = base64.urlsafe_b64decode(sysdir.encode('ascii'))
-        os.chdir(sysdir)
-        files = filter(os.path.isfile, os.listdir(os.curdir))
-        for file in files:
-            newsysdir = base64.urlsafe_b64encode(sysdir)
-            value+='<a href="javascript:updateAJAX(\'rightDiv\',\'mediaContent\')'+'">'+file+'</a><br>'  
-        return value
-    printFiles.exposed = True
-        
-    def printDirectories(self, sysdir, style = None):
-        value='''
-
-'''
-        jslink=""
-        sysdir = sysdir+'='
-        sysdir = base64.urlsafe_b64decode(sysdir.encode('ascii'))
-        os.chdir(sysdir)
-        directories = filter(os.path.isdir, os.listdir(os.curdir))
-        if style is None:
-            for directory in directories:
-                newsysdir = base64.urlsafe_b64encode(sysdir+"\\"+directory)
-                jslink='javascript:updateAJAX(\'rightDiv\',\'listContent?sysdir='+newsysdir+'\')'
-                divID='listLinkDiv'+directory
-                value+='<a href="'+jslink+'">'+directory+'</a><br>'
-        else:
-            for directory in directories:
-                newsysdir = base64.urlsafe_b64encode(sysdir+"\\"+directory)
-                jslink='javascript:updateAJAX(\'rightDiv\',\'listContent?sysdir='+newsysdir+'\')'
-                divID='listLinkDiv'+directory
-                value+='<div onclick="'+jslink+'" class="listLinkDiv" id="'+divID+'"><span class="listLinkSpan"><a href="'+jslink+'">'+directory+'</a></span></div>'
-            
-        return value
-    printDirectories.exposed = True
     
-    def leftListContentHelper(self, folder = None):
-        value=""
-        sysdir=""
-        os.chdir(os.getcwd())
-        Config = ConfigParser.ConfigParser()        
-        Config.read(conf)
-        options = Config.options('Media')
-        if folder == None:
-            if len(options) > 0:
-                folder = options[0]
-            else:
-                value += "You currently have no media folders configured."
-                return value
-        if Config.has_option('Media', folder):
-            #generate links
-            sysdir = Config.get('Media', folder)
-            sysdir = (sysdir[1:-1])
-            sysdir = base64.urlsafe_b64encode(sysdir)
-            value+=self.printDirectories(sysdir, "left")            
-        else:
-            value+="The folder parameter is not properly configured."
-        return value
-    leftListContentHelper.exposed = True
-    
-    def leftListContent(self):
-        # List folder contents of a directory
-        os.chdir(os.getcwd())
-        Config = ConfigParser.ConfigParser()
-        Config.read(conf)
-        options = Config.options('Media')
-        value = '''
-<div id="leftDiv">
-<div id="dropDownDiv">
-<form id="directoryForm" name="directoryForm">
-<select id="directoryMenu" name="directoryMenu" onChange="updateAJAX('directoryList', document.directoryForm.directoryMenu.options[document.directoryForm.directoryMenu.options.selectedIndex].value)">
+    def generateBody(self):
+        #set up the menu div with proper playlists and filters
+        #put something in the right div
+        audiolink = 'libraryDiv?libType=audio'
+        videolink = 'libraryDiv?libType=video'
+        torrentlink = 'upload?temp=0'
+        audio='<div data-ajaxlink="'+audiolink+'" class="menuLinkDiv library notloaded" id="menuLinkDivAudio"><div class="menuIcon" id="iconAudioDiv"></div><div class="menuTextLink">Audio</div></div>\n'
+        video='<div data-ajaxlink="'+videolink+'" data-libid="0" class="menuLinkDiv library selected loaded" id="menuLinkDivVideo"><div class="menuIcon" id="iconVideoDiv"></div><div class="menuTextLink">Video</div></div>\n'
+        torrent='<div data-ajaxlink="'+torrentlink+'" class="menuLinkDiv notloaded" id="menuLinkDivTorrent"><div class="menuIcon" id="iconTorrentDiv"></div><div class="menuTextLink">Torrent</div></div>\n'
+        value = '<div id="menuDiv">\n<div id="filterMenuDiv">'+video+audio+torrent+'</div>\n'
+        value+='''
+</div>
+<div id="contentDiv">
+</div>
+<div id="controlsDiv">
+<img class="skipPrvBtnImg" src="static/images/skip_previous_disabled.png"/><img class="stopBtnImg" src="static/images/stop_disabled.png"/><img class="playBtnImg play enabled" src="static/images/play.png"/><img class="skipFwdBtnImg" src="static/images/skip_forward_disabled.png"/>
+</div>
+<div id="mediaDiv">
+<div id="videoDiv">
+</div>
+<div id="audioDiv">
+</div>
+</div>
+</body>
+</html>
 '''
-        for option in options:
-            value+="<option value=leftListContentHelper?folder="+option+">"+option+"</option>"
-        value+='</select></form></div><div id="directoryList">'+self.leftListContentHelper(None)+'</div>'
-        value+='</div><div id="rightDiv">THIS IS OUR WELCOME PAGE. AS YOU CAN TELL, WE HAVE PUT A TON OF EFFORT INTO IT</div></body></html>'
         return value;
-    leftListContent.exposed = True
+    generateBody.exposed = True
     
     
-    def listContent(self, sysdir = None, file = None):
-        value = ""
-        if not file:
-            #list directory contests
-            value+='<div id="directoryTitle">'+os.path.basename(base64.urlsafe_b64decode(sysdir.encode('ascii')))+'</div>'
-            value+=self.printDirectories(sysdir)
-            value+=self.printFiles(sysdir)
-        return value
-    listContent.exposed = True
-    
-    def mediaContent(self, source = None): 
+    def mediaDiv(self, source = None): 
         value = '<div id="media"><div id="mediaTitle">'+'Title as supplied by some AJAX goes here'+'</div>'
         value += '''
         <div id="mediaMain">
@@ -173,38 +71,160 @@ $(document).ready(function(){
         </video>
         </div>
         <div id="mediaExtra">
-        <a href="javascript:openPopOutMedia()">Open in new window (not functional yet)</a>
+        <a href="javascript:openPopOutMedia()">Open in new window</a>
         </div></div>
         '''
         return value;
-    mediaContent.exposed = True
+    mediaDiv.exposed = True
     
-    def mediaPopOutContent(self, source = None):
-        #Display available media files and subfolders
-        #
-        if mediaType=="video":
-            return '''<html>
-                <head>
-                <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
-                <title>Test</title>
-                </head>
-                <body>
-                <div id="mediaPopOut" style="height:100%">
-                <video width="100%" height="100%" src="static/test.webm" controls>
-                </video>
-                </div>
-                </body>
-                </html>'''
-    mediaPopOutContent.exposed = True
     
+    def menuDiv(self):
+        #generate the entire menu html
+        return ""
+    menuDiv.exposed = True
+    
+    def filterMenuDiv(self):
+        #generate the filter (ex: audio and video) portion of the menu
+        return ""
+    filterMenuDiv.exposed = True
+        
+    def playlistMenuDiv(self):
+        #generate the html for the playlist section of the menu
+        return ""
+    playlistMenuDiv.exposed = True
 
+    def libraryDiv(self, libType, libId="0"):
+        #generate the table of library contents
+        #columns will be a comma deliminated list
+        if libType=="audio":
+            columns = "id,file_type,entry_title,album,artist,genre"
+            filters = "file_type = 'audio'"
+        elif libType=="video":
+            columns = "id,file_type,entry_title,album,artist,genre"
+            filters = "file_type = 'video'"
+        else:
+            columns = "id,file_type,entry_title,album,artist,genre"
+            filters = "file_type = 'audio'"
+        conn = sqlite3.connect('sqlitedb')
+        cursor = conn.cursor()
+        columnList = columns.rsplit(',')
+        table=""
+        #cutting some corners here with the SQL. This is not secure, fix later!!!
+        query = "SELECT "+columns+" FROM item WHERE "+filters
+        cursor.execute(query)
+        
+        #set up the table header
+        table+='<div id="containerDiv'+str(libId)+'" class="containerDiv">\n<table cellpadding="0" cellspacing="0" border="0" class="display" id="libraryTable'+str(libId)+'">'
+        
+        row=cursor.fetchone()
+        if 1:
+            table+='<thead>\n'
+            table+='<th></th>\n'
+            for i in range(2, len(columnList)):
+                if type(row[i]) is int:
+                    table+='<th>'+columnList[i]+'</th>\n'
+                else:
+                    table+='<th>'+columnList[i]+'</th>\n'
+            table+='</thead>\n'
+        
+        #set up the body of the table
+        table+='<tbody>\n'
+        count=0;
+        
+        while row:
+            table+='<tr class="'+str(row[0])+' '+str(row[1])+'">\n'
+            table+='<td></td>'
+            for i in range(2, len(columnList)):
+                table+='<td>'+str(row[i])+'</td>\n'
+            row = cursor.fetchone()
+            count+=1
+            table+='</tr>\n'
+        
+        table+='</tbody>\n</table>\n</div>\n'
+      
+        return table
+    libraryDiv.exposed = True
+        
+    def createPlaylist(self, playlistname, itemid):
+        #create new playlist in  miro using given song
+        #return new playlist section div
+        return ""
+    createPlaylist.exposed = True
+
+    def deletePlaylist(self, playlistname):
+        #delete playlist from miro
+        #return new playlist section div
+        return ""
+    deletePlaylist.exposed = True
+    
+    def addWatchlistFolder(self, folder):
+        #add folder to miro watchlist folders
+        #return success or failure
+        return ""
+    addWatchlistFolder.exposed = True
+    
+    def removeWatchlistFolder(self, folder):
+        #remove folder from miro watchlist folders
+        #return success or failure
+        return ""
+    removeWatchlistFolder.exposed = True
+        
+    def upload(self, temp, libId):
+        out = '<div id="containerDiv'+str(libId)+'" class="containerDiv torrent">'
+        out+= """
+    <div id="headerDiv">Torrent Upload</div>
+    <div id="uploadInstructions">Upload a torrent file containing a video and begin watching nearly instantly.</div>
+    <div id="formDiv">   
+    <form id="uploadForm" target="uploadIframe" action="uploadSubmit" method="post" enctype="multipart/form-data">
+        <fieldset>
+            <input id="file" type="file" name="myFile"/>
+            <input id="upload" type="submit" value="Upload Torrent"/>
+        </fieldset>
+        <br>
+        <img id="loadWheelImg" class="hidden" src="static/images/loading_wheel.gif" />
+    </form>
+    
+    <iframe style="display:none;" id="uploadIframe" onload="torrentReturned()"></iframe>
+    </div>
+</div>
+        """
+        return out;
+    upload.exposed = True
+
+    def uploadSubmit(self, myFile):
+        out = """<html>
+        <body>
+            myFile length: %s<br />
+            myFile filename: %s<br />
+            myFile mime-type: %s
+        </body>
+        </html>"""
+
+
+        # Although this just counts the file length, it demonstrates
+        # how to read large files in chunks instead of all at once.
+        # CherryPy reads the uploaded file into a temporary file;
+        # myFile.file.read reads from that.
+        size = 0
+        while True:
+            data = myFile.file.read(8192)
+            if not data:
+                break
+            size += len(data)
+
+        return out % (size, myFile.filename, myFile.content_type)
+        #return("<html><body>static/test.webm</body></html>")
+    uploadSubmit.exposed = True    
+        
 conf = os.path.join(os.path.dirname(__file__), 'config.ini')
 
 if __name__ == '__main__':
     # CherryPy always starts with app.root when trying to map request URIs
     # to objects, so we need to mount a request handler root. A request
     # to '/' will be mapped to HelloWorld().index().
+    cherrypy.config.update({'server.socket_host': '192.168.1.98'})
     cherrypy.quickstart(AirTorrent(), config=conf)
 else:
     # This branch is for the test suite; you can ignore it.
+    cherrypy.config.update({'server.socket_host': '192.168.1.98'})
     cherrypy.tree.mount(AirTorrent(), config=conf)

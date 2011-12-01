@@ -1,0 +1,154 @@
+
+::-moz-selection{
+  background-color:Transparent;
+}
+
+::selection {
+  background-color:Transparent;
+}
+
+.menuIcon{
+margin-top: 3px;
+margin-left: 20px;
+margin-right: 3px;
+width: 25px;
+height: 25px;
+float: left;
+}
+
+#iconAudioDiv{
+background: url(../images/icon-audio.png);
+}
+
+#iconVideoDiv{
+background: url(../images/icon-video.png);
+}
+
+#iconTorrentDiv{
+background: url(../images/icon-other.png);
+}
+
+#playlistMenuDiv{
+  width:100%; 
+  height:50%;
+}
+
+#filterMenuDiv {
+  width:100%; 
+  height:50%;
+}
+
+
+.containerDiv{
+height:100%;
+position: absolute;
+top: 0px;
+left: 0px;
+bottom: 64px;
+right: 0px;
+}
+
+#menuDiv {
+  position: absolute; 
+  top: 0px;
+  left: 0px;
+  bottom: 64px;
+  width: 147px;
+  overflow:hidden;
+  background-color:#e1edf7;
+  border-right-width: 3px;
+  border-right-color: #f5f5f5;
+  border-right-style: solid;
+}
+
+#contentDiv {
+  position: absolute; 
+  top: 0px;
+  bottom: 64px;
+  left: 150px;
+  right: 0px;
+  overflow:hidden;  
+  background-color:#ffffff;
+}
+
+.containerDiv {
+  display: none;
+}
+.containerDiv.active{
+  display: block;  
+}
+
+#controlsDiv {
+  position: absolute;
+  bottom:0px;
+  left: 0px;
+  right: 0px;
+  height: 62px;
+  width: 100%;
+  overflow:hidden;  
+  background-color:#c0c0c0;
+  border-top-width: 1px;
+  border-top-color: #black;
+  border-top-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #black;
+  border-bottom-style: solid;
+  z-index: 3;
+  opacity: 1;
+}
+
+#videoDiv {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  height: 100%;
+  width: 100%;
+  overflow:hidden;  
+  background-color:black;
+  z-index: 2;
+}
+
+#mediaMain {
+  width: 640px; 
+  margin-left: auto; 
+  margin-right: auto;
+}
+
+#mediaPopOut {
+background-color:#000000;
+}
+
+#linkListSecondDiv {
+margin-left:0px;
+}
+
+div.menuTextLink{
+cursor: pointer;
+padding-top: 8px;
+height: 23px;
+}
+
+
+div.menuLinkDiv{
+cursor: pointer;
+background-color: #e1edf7;
+font-family: arial, sans-serif;
+font-size: 15px;
+height: 31px;
+width: 100%;
+color: black;
+}
+
+div.menuLinkDiv.selected{
+  font-weight: bold;
+  background-color: #7a9fc1;
+  color: white;
+}
+
+
+
+
+td {
+font-family: arial, sans-serif;
+font-size: 10pt;
+}
