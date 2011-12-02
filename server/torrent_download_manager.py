@@ -174,7 +174,7 @@ class TorrentDownloadManager:
         yes, media_info = transcode.needs_transcode(media_path)
         logging.debug('media info: %s', media_info)
         assert(media_info)
-        self.transcode_object = transcode.TranscodeObject(True, media_info,
+        self.transcode_object = transcode.TranscodeObject('-', None, 0, None, media_info,
                                                           request_path_func)
         self.playlist = self.transcode_object.playlist
         self.transcode_writer = TranscodeWriter(self.transcode_object)
