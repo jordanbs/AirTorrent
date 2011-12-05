@@ -15,9 +15,10 @@ class TorrentDownloadManager:
     This class represents an inidividual torrent download, piping the
     completed pieces (in order) to ffmpeg
     '''
-    def __init__(self, metainfo_file_path, save_directory_path):
+    def __init__(self, metainfo_file_path, save_directory_path, request_path_func):
         self.metainfo_file_path = metainfo_file_path
         self.save_directory_path = save_directory_path
+        self.request_path_func = request_path_func
         self._setup()
 
     def _setup(self):
@@ -26,6 +27,7 @@ class TorrentDownloadManager:
         metainfo = lt.bdecode(metainfo_file.read())
         metainfo_file.close()
         self.torrent_info = lt.torrent_info(metainfo)
+        self.torrent_info_hash = str(self.torrent_info.info_hash())
 
         self.params['save_path'] = self.save_directory_path
         self.params['ti'] = self.torrent_info
@@ -175,7 +177,7 @@ class TorrentDownloadManager:
         logging.debug('media info: %s', media_info)
         assert(media_info)
         self.transcode_object = transcode.TranscodeObject('-', None, 0, None, media_info,
-                                                          request_path_func)
+                                                          self.request_path_func)
         self.playlist = self.transcode_object.playlist
         self.transcode_writer = TranscodeWriter(self.transcode_object)
         self.transcode_writer.start()
@@ -188,6 +190,13 @@ class TorrentDownloadManager:
         # XXX make is_transcoding an event to make thread safe?
         self.is_transcoding = True
         logging.info('transcoding started')
+        
+        return self.playlist
+
+    def get_chunk(chunk):
+        # TODO: track where the chunk is, if it skips, then toss the transcode_object and create
+        # a new one at the start of the chunk. necessary for seeking
+        return self.transcode_object.get_chunk()
 
     def shutdown(self):
         if self.transcode_writer:
