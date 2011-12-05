@@ -44,7 +44,6 @@ class TorrentSessionManager(threading.Thread):
 
         self.torrent_downloads[torrent_info_hash] = torrent_download_manager
         torrent_download_manager.start()
-
         return torrent_download_manager
     
     def get_playlist(self, torrent_info_hash, file_index=0):

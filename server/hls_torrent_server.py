@@ -28,10 +28,10 @@ class HLSTorrentServer(BaseHTTPServer.HTTPServer):
         return self.torrent_session_manager.get_playlist(torrent_info_hash, file_index)
         
     def segment_request_path_func(self, torrent_info_hash, enclosure):
-        address, addrlength = self.rfile._sock.getsockname()
-        listen_address, port = self.server.server_address
+        address, addrlength = self.socket.getsockname()
+        listen_address, port = self.server_address
         # TODO: fix TranscodeObject.get_chunk() to append urls properly to get rid of junk
-        return ('http://%s:%d/%d.%s?junk=0' % (address, port, torrent_info_hash, enclosure))
+        return ('http://%s:%d/%s.%s?junk=0' % (address, port, torrent_info_hash, enclosure))
 
     def get_chunk(self, torrent_info_hash, chunk):
         return self.torrent_session_manager.get_chunk(torrent_info_hash, chunk)
@@ -53,6 +53,10 @@ class HLSTorrentRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(200)
             self.end_headers()
             self.wfile.write(playlist)
+            return
+
+        if not url_parts.path.endswith('.ts'):
+            logging.warn('Invalid GET request')
             return
 
         # XXX: this could be cleaner...
@@ -84,7 +88,7 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.DEBUG)
         server_address = ('', 8000)
         save_path = '/home/jbschne/media'
-        torrent_path = '/home/jbschne/torrents/The.Pleasure.Garden.1925.DVDRip.x264-DiRTY.torrent'
+        torrent_path = '/home/jbschne/torrents/Drive.2011.R5.DVDRip.x264-Soul.torrent'
         httpd = HLSTorrentServer(server_address, HLSTorrentRequestHandler, save_path)
         try:
             httpd.serve_forever()

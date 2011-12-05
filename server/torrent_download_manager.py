@@ -28,6 +28,8 @@ class TorrentDownloadManager:
         metainfo_file.close()
         self.torrent_info = lt.torrent_info(metainfo)
         self.torrent_info_hash = str(self.torrent_info.info_hash())
+        self.torrent_name = self.torrent_info.name()
+        self.num_pieces = self.torrent_info.num_pieces()
 
         self.params['save_path'] = self.save_directory_path
         self.params['ti'] = self.torrent_info
@@ -70,9 +72,6 @@ class TorrentDownloadManager:
             raise Exception('self.torrent_handle is undefined')
 
         self.select_video_files()
-        self.torrent_info = self.torrent_handle.get_torrent_info()
-        self.torrent_name = self.torrent_info.name()
-        self.num_pieces = self.torrent_info.num_pieces()
         # setup completed piece mapping
 
         self.torrent_handle.set_sequential_download(True)
@@ -176,8 +175,8 @@ class TorrentDownloadManager:
         yes, media_info = transcode.needs_transcode(media_path)
         logging.debug('media info: %s', media_info)
         assert(media_info)
-        self.transcode_object = transcode.TranscodeObject('-', None, 0, None, media_info,
-                                                          self.request_path_func)
+        self.transcode_object = transcode.TranscodeObject('-', self.torrent_info_hash, 0, None,
+                                                          media_info, self.request_path_func)
         self.playlist = self.transcode_object.playlist
         self.transcode_writer = TranscodeWriter(self.transcode_object)
         self.transcode_writer.start()
