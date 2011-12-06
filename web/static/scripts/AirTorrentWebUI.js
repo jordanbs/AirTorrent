@@ -6,22 +6,59 @@ $(document).ready(function(){
   window.timer;
   window.isFadingIn = false;           //used for some book-keeping with the controls div
   window.isShuffle = false;
-  window.isLoop = true;
+  window.isLoop = false;
   window.isLoopOnce = false;
   window.loopCount = 0;
-  window.playngID = -1;
   window.selectedID = -1;
+  window.playingID = -1;
+  window.lastVolume = 0;
+  $('.playbackTrack').hide()
   $('#videoDiv').hide();
   updateAJAX('contentDiv', 'libraryDiv?libType=video&libId=0', '0');
 
+  $('.playbackCursor').drag(function(ev, dd){
+    //$(this).css('left', dd.offsetX)
+  });
+  
+  $('.volumeIconDiv').click(function(){
+    var temp = parseInt($('.volumeKnobDiv').css('left'));
+    $('.volumeKnobDiv').css('left', window.lastVolume);
+    $('.mediaPlayer').get(0).volume = (window.lastVolume)/93;
+    window.lastVolume = temp;
+  });
+  
+  $('.volumeTrackDiv').mousedown(function(e){
+    var val = e.offsetX + 9;
+    if (val<0){
+      val=0;
+    }
+    if (val>93){
+      val=93;
+    }
+    $('.volumeKnobDiv').css('left', val);
+    $('.mediaPlayer').get(0).volume = val/93;
+    window.lastVolume = 0;
+  });
+  
+  $('.volumeKnobDiv').drag(function(ev, dd){
+    var orig = $(this).css('left');
+    var val = (dd.offsetX);
+    if (val<0){
+      val=0;
+    }
+    if (val>93){
+      val=93;
+    }
+    $(this).css('left', val);
+    $('.mediaPlayer').get(0).volume = val/93;
+    window.lastVolume = 0;
+  }, {relative: true});
   
   $("tr.video").live('dblclick',function(){
-    stopPlaylist();
     startNewPlaylist();
   });
   
   $("tr.audio").live('dblclick',function(){
-    stopPlaylist();
     startNewPlaylist();
   });
   
@@ -66,71 +103,144 @@ $(document).ready(function(){
   
   
   //CONTROL BUTTONS
-  $(".playBtnImg.enabled.play").live('mousedown', function(){
-    $(this).attr('src', 'static/images/play_active.png');
+  $(".playBtnImgDiv.enabled.play").live('mousedown', function(){
+    $(this).addClass('mousedown');
+    //$(this).attr('src', 'static/images/play_active.png');
   });
   
   
-  //HEY GO HERE
-  $(".playBtnImg.enabled.play").live('mouseup', function(){
+  $(".playBtnImgDiv.enabled.play").live('mouseup', function(){
+    $(this).removeClass('mousedown');
     if($('#libraryTable'+window.playingTableIndex+' tbody tr.playing').length > 0){
       var player = $('.mediaPlayer').get(0);
       player.play();
     }
     else{
-      stopPlaylist();
+      if($('.menuLinkDiv.selected').hasClass('torrent')){
+        if($('.mediaPlayer').length > 0){
+          //there's a torrent currently loaded in, so play
+          var player = $('.mediaPlayer').get(0);
+          player.play();
+          return;
+        }
+        else{
+          //do nothing, don't start a new playlist or anything
+          return;
+        }
+      }
       startNewPlaylist();
     }
   });
   
-  $(".playBtnImg.enabled.pause").live('mousedown', function(){
-    $(this).attr('src', 'static/images/pause_active.png');
+  $(".playBtnImgDiv.enabled.pause").live('mousedown', function(){
+    $(this).addClass('mousedown');
   });
   
-  $(".playBtnImg.enabled.pause").live('mouseup', function(){
+  $(".playBtnImgDiv.enabled.pause").live('mouseup', function(){
+    $(this).removeClass('mousedown');
     var player = $('.mediaPlayer').get(0);
     player.pause();
   });
 
-  $('.skipFwdBtnImg.enabled').live('mousedown', function(){
-    $(this).attr('src', 'static/images/skip_forward_active.png');
+  $('.skipFwdBtnImgDiv.enabled').live('mousedown', function(){
+    $(this).addClass('mousedown');
   });
-  $('.skipFwdBtnImg.enabled').live('mouseup', function(){
-    $(this).attr('src', 'static/images/skip_forward.png');
+  $('.skipFwdBtnImgDiv.enabled').live('mouseup', function(){
+    $(this).removeClass('mousedown');
     playNext();
   });
   
-  $('.skipPrvBtnImg.enabled').live('mousedown', function(){
-    $(this).attr('src', 'static/images/skip_previous_active.png');
+  $('.skipPrvBtnImgDiv.enabled').live('mousedown', function(){
+    $(this).addClass('mousedown');
   });
-  $('.skipPrvBtnImg.enabled').live('mouseup', function(){
-    $(this).attr('src', 'static/images/skip_previous.png');
+  $('.skipPrvBtnImgDiv.enabled').live('mouseup', function(){
+    $(this).removeClass('mousedown');
+    playPrevious();
   });
   
-  $('.stopBtnImg.enabled').live('mousedown', function(){
-    $(this).attr('src', 'static/images/stop_active.png');
+  $('.stopBtnImgDiv.enabled').live('mousedown', function(){
+    $(this).addClass('mousedown');
   });
-  $('.stopBtnImg.enabled').live('mouseup', function(){
-    $(this).attr('src', 'static/images/stop.png');
+  $('.stopBtnImgDiv.enabled').live('mouseup', function(){
+    $(this).removeClass('mousedown');
     stopPlaylist();
   });
+  
+  
+  
+  
+  $('.shuffleBtnDiv.off').live('mousedown', function(){
+    $(this).addClass('mousedown');
+  });
+  $('.shuffleBtnDiv.off.mousedown').live('mouseup', function(){
+    $(this).removeClass('mousedown');
+    $(this).removeClass('off');
+    $(this).addClass('on');
+    window.isShuffle = true;
+  });
+  
+  $('.shuffleBtnDiv.on').live('mousedown', function(){
+    $(this).addClass('mousedown');
+  });
+  $('.shuffleBtnDiv.on.mousedown').live('mouseup', function(){
+    $(this).removeClass('mousedown');
+    $(this).removeClass('on');
+    $(this).addClass('off');
+    window.isShuffle = false;
+  });
+  
+  
+  
+  $('.loopBtnDiv.off').live('mousedown', function(){
+    $(this).addClass('mousedown');
+  });
+  $('.loopBtnDiv.off.mousedown').live('mouseup', function(){
+    $(this).removeClass('mousedown');
+    $(this).removeClass('off');
+    $(this).addClass('on');
+    window.isLoop = true;
+    window.isLoopOnce = false;
+  });
+  
+  $('.loopBtnDiv.on').live('mousedown', function(){
+    $(this).addClass('mousedown');
+  });
+  $('.loopBtnDiv.on.mousedown').live('mouseup', function(){
+    $(this).removeClass('mousedown');
+    $(this).removeClass('on');
+    $(this).addClass('once');
+    window.isLoop = false;
+    window.isLoopOnce = true;
+  });
+  
+  
+  $('.loopBtnDiv.once').live('mousedown', function(){
+    $(this).addClass('mousedown');
+  });
+  $('.loopBtnDiv.once.mousedown').live('mouseup', function(){
+    $(this).removeClass('mousedown');
+    $(this).removeClass('once');
+    $(this).addClass('off');
+    window.isLoop = false;
+    window.isLoopOnce = false;
+  });
+  
   
   
 //TORRENT GUI  
   $('#upload').live('click', function(e){
     $('#loadWheelImg').removeClass('hidden');
+    $('#upload').hide();
     var file=this.form[1].files[0];
     if(file){
-      if(file.type != "application/x-bittorrent"){
-        alert('Please choose a torrent file');
-        e.preventDefault();
-        $('#loadWheelImg').addClass('hidden');
-      }
+      $('#loadWheelImg').addClass('hidden');
+      $('#upload').show();
     }
     else{
       alert('Please choose a torrent file');
       e.preventDefault();
       $('#loadWheelImg').addClass('hidden');
+      $('#upload').show();
     }
   });
 
@@ -142,6 +252,14 @@ $(document).ready(function(){
     if($(".containerDiv").length > 0){
       $('.dataTables_scroll').css("height", (($('#contentDiv').outerHeight(true))-($('.dataTables_filter').outerHeight(true))));
       $('.dataTables_scrollBody').css("height", (($('#contentDiv').outerHeight(true))-($('.dataTables_filter').outerHeight(true))-(29)));
+    }
+    var val = (this.currentTime/this.duration) * ($('.playbackTrack').outerWidth() - 18);
+    $('.playbackCursor').css('left', val+'px');
+    if(val>1){
+      $('.playbackTrackLeftProgress').show();
+    }
+    else{
+      $('.playbackTrackCenterProgress').css('right', $('.playbackTrack').outerWidth() - val - 9);
     }
     resizeColumns();
   });
@@ -175,7 +293,7 @@ $(document).ready(function(){
 
 
 function updateAJAX(div, pageLink){
-  if (arguments.length==2){
+  if (arguments.length===2){
     libId="0";
   }
   var xmlhttp;
@@ -187,8 +305,8 @@ function updateAJAX(div, pageLink){
     xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
   }
   xmlhttp.onreadystatechange=function(){
-    if (xmlhttp.readyState==4 && xmlhttp.status==200){
-      if(div=='contentDiv'){
+    if (xmlhttp.readyState===4 && xmlhttp.status===200){
+      if(div==='contentDiv'){
         //if we're loading another library table in, append it to the content div
         var libId = $('.containerDiv').length;
         $('#contentDiv').append(xmlhttp.responseText);
@@ -203,14 +321,10 @@ function updateAJAX(div, pageLink){
           $('#libraryTable'+libId+'_filter').html('<label><input type="text"></label>');  
           $('#libraryTable'+libId+'_filter input').bind('keyup.DT', function(){
             window.tables[libId].fnFilter($('#libraryTable'+libId+'_filter input').val());
-            var temp='tbody tr.playing:not(.'+window.playingID+')'
-            $(temp).each(function(index) {
-                $(this).removeClass('playing');
-                $(this).remove('td:first img');
-                $(this).addClass('played');
-            });
-  
-              
+            $('#libraryTable'+libId+' tbody tr.playing:not(.'+window.playingID+')').addClass('played');
+            $('#libraryTable'+libId+' tbody tr.playing:not(.'+window.playingID+') img').remove();
+            $('#libraryTable'+libId+' tbody tr.playing:not(.'+window.playingID+')').removeClass('playing');              
+            $('#libraryTable'+libId+' tbody tr.selected:not(.'+window.selectedID+')').removeClass('selected');
           });
           $('#libraryTable'+libId+' tbody tr').live('click', function(){
             $('#libraryTable'+libId+' tr.selected').removeClass('selected'); 
@@ -253,23 +367,73 @@ function torrentReturned(){
   var myIFrame = document.getElementById('uploadIframe');
   var content = myIFrame.contentWindow.document.body.innerHTML;
   $('#loadWheelImg').addClass('hidden');
+  $('#upload').show();
   if(content!=""){
-      alert(content);
+      startTorrentPlayback(content);
   }
-
 }
 
 
+function startTorrentPlayback(source){
+  stopPlaylist();
+  $('.playBtnImgDiv').addClass('enabled');
+  $('.skipPrvBtnImgDiv').removeClass('enabled');
+  $('.skipFwdBtnImgDiv').removeClass('enabled');
+  $('.stopBtnImgDiv').addClass('enabled');
+  window.playingTableIndex = -1; //this is already done in stopPlaylist, just here for clarity purposes
+  newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="'+source+'"></video>'
+  $('#videoDiv').append(newdiv);
+  $('#controlsDiv').addClass('video');
+  $('#videoDiv').show();
+  var title="Uploaded Torrent"
+  $('.progressTimelineTitle').html('<img class="progressTimelineIconAudio" src="static/images/mini-icon-audio.png"><img class="progressTimelineIconVideo" src="static/images/mini-icon-video.png">'+title);
+  $('.progressTimelineArtist').html('');
+  $('.progressTimelineAlbum').html('');
+  
+  
+  $('.mediaPlayer').bind('play', function(){
+    $(".playBtnImgDiv").addClass('pause');
+    $(".playBtnImgDiv").removeClass('play');
+  });
+  $('.mediaPlayer').bind('pause', function(){
+    $(".playBtnImgDiv").removeClass('pause');
+    $(".playBtnImgDiv").addClass('play');
+  });
+  $('.mediaPlayer').bind('timeupdate', function(){
+    //seek bar update
+    var val = (this.currentTime/this.duration) * ($('.playbackTrack').outerWidth() - 18);
+    $('.playbackCursor').css('left', val+'px');
+    if(val>1){
+      $('.playbackTrackLeftProgress').show();
+    }
+    $('.playbackTrackCenterProgress').css('right', $('.playbackTrack').outerWidth() - val - 9);
+    $('.progressTimelineTimePlayed').html(secondstominutes(parseInt(this.currentTime)));
+    $('.progressTimelineTimeLeft').html('-'+secondstominutes(parseInt(this.duration) - parseInt(this.currentTime)));
+  });
+  $('.mediaPlayer').bind('ended', function(){
+    playNext();
+  });
+  window.playingID = -1;
+  $('.mediaPlayer').get(0).volume = (parseInt($('.volumeKnobDiv').css('left')))/93;
+  $('.playbackTrack').show()
+  $('.playbackTrackCenterProgress').css('right', $('.playbackTrack').outerWidth() - $('.playbackTrackCenterProgress').css('left'));
+  $('.playbackTrackLeftProgress').hide()
+  $('.playbackTrackRightProgress').hide()
+  $('.playbackCursor').css('left', 0+'px');
+  $('.playbackCursor').show()
+  $('.progressTimelineHeader').show();
+  $('.progressTimelineTimeLeft').show();
+  $('.progressTimelineTimePlayed').show();
+  var player = $('.mediaPlayer').get(0);
+  player.play();
+}
 
 function startNewPlaylist(){
-  $('.playBtnImg').addClass('enabled');
-  $('.playBtnImg').attr('src', 'static/images/play.png');
-  $('.skipPrvBtnImg').addClass('enabled');
-  $('.skipPrvBtnImg').attr('src', 'static/images/skip_previous.png');
-  $('.skipFwdBtnImg').addClass('enabled');
-  $('.skipFwdBtnImg').attr('src', 'static/images/skip_forward.png');
-  $('.stopBtnImg').addClass('enabled');
-  $('.stopBtnImg').attr('src', 'static/images/stop.png');
+  stopPlaylist();
+  $('.playBtnImgDiv').addClass('enabled');
+  $('.skipPrvBtnImgDiv').addClass('enabled');
+  $('.skipFwdBtnImgDiv').addClass('enabled');
+  $('.stopBtnImgDiv').addClass('enabled');
   window.playingTableIndex = $('.menuLinkDiv.selected').attr('data-libid');
   //parse the row id from the class
   id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr.selected:first').attr('class').split(' '));
@@ -279,9 +443,13 @@ function startNewPlaylist(){
 }
 
 function stopPlaylist(){
-  $('#libraryTable'+window.playingTableIndex+' tbody tr').removeClass('played');
-  $('#libraryTable'+window.playingTableIndex+' tbody tr.playing img').remove();
-  $('#libraryTable'+window.playingTableIndex+' tbody tr').removeClass('playing');
+  if(window.playingTableIndex > -1){
+    $('#libraryTable'+window.playingTableIndex+' tbody tr').removeClass('played');
+    $('#libraryTable'+window.playingTableIndex+' tbody tr.playing img').remove();
+    $('#libraryTable'+window.playingTableIndex+' tbody tr').removeClass('playing');
+  }
+  window.playingID = -1;
+  window.loopCount = 0;
   window.playlistHistory.length = 0;
   window.playingTableIndex = -1;
   window.currentPlaylistIndex = -1;
@@ -293,17 +461,102 @@ function stopPlaylist(){
   }
   $('#controlsDiv').show();
   $('.mediaPlayer').remove();
-  $('.playBtnImg').attr('src', 'static/images/play.png');
-  $('.skipPrvBtnImg').removeClass('enabled');
-  $('.skipPrvBtnImg').attr('src', 'static/images/skip_previous_disabled.png');
-  $('.skipFwdBtnImg').removeClass('enabled');
-  $('.skipFwdBtnImg').attr('src', 'static/images/skip_forward_disabled.png');
-  $('.stopBtnImg').removeClass('enabled');
-  $('.stopBtnImg').attr('src', 'static/images/stop_disabled.png');
+  $('.playBtnImgDiv').removeClass('pause');
+  $('.playBtnImgDiv').addClass('play');
+  $('.skipPrvBtnImgDiv').removeClass('enabled');
+  $('.skipFwdBtnImgDiv').removeClass('enabled');
+  $('.stopBtnImgDiv').removeClass('enabled');
+  $('.playbackTrack').hide()
+  $('.playbackCursor').css('left', 0+'px');
+  $('.playbackCursor').hide()
+  $('.playbackTrackCenterProgress').css('right', $('.playbackTrack').outerWidth() - $('.playbackTrackCenterProgress').css('left'));
+  $('.playbackTrackLeftProgress').hide()
+  $('.playbackTrackRightProgress').hide()
+  $('.progressTimelineHeader').hide();
+  $('.progressTimelineTimePlayed').html('');
+  $('.progressTimelineTimeLeft').html('');
+  $('.progressTimelineTimeLeft').hide();
+  $('.progressTimelineTimePlayed').hide();
+}
+
+function playPrevious(){
+  var id;
+  if(window.isShuffle){
+    //if in non random part of a random playlist, play previous song played
+    if(window.currentPlaylistIndex > 0){
+      window.currentPlaylistIndex=window.currentPlaylistIndex-1;
+      id = window.playlistHistory[window.currentPlaylistIndex];
+    }
+    else{
+      //current playlist is at beggining, so go back to end of playlist if looping
+      if(window.isLoop || window.isLoopOnce){
+        if(window.loopCount>0){
+          //go back to end of playlist
+          window.loopCount=window.loopCount-1;
+          window.currentPlaylistIndex=window.playlistHistory.length-1;
+          id = window.playlistHistory[window.currentPlaylistIndex];
+        }
+        else{
+          stopPlaylist();
+          return;
+        }
+      }
+      else{
+        stopPlaylist();
+        return;
+      }
+    }
+  }
+  else{
+    //play previous song in the table
+    if($('#libraryTable'+window.playingTableIndex+' tbody tr.playing').length > 0){
+      //if the curretly playing song is actually visible in the table
+      if($('#libraryTable'+window.playingTableIndex+' tbody tr.playing').prev().length > 0){
+        //take the previous song visible in the table
+        id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr.playing').prev().attr('class').split(' '));
+      }
+      else{
+        //if there is no previoius song, either go back to the end of the table for loop, or stop
+        if(window.isLoop || window.isLoopOnce){
+          if(window.loopCount>0){
+            //go back to end of playlist
+            window.loopCount=window.loopCount-1;
+            id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr:last').attr('class').split(' '));
+          }
+          else{
+            stopPlaylist();
+            return;
+          }
+        }
+        else{
+          stopPlaylist();
+          return;
+        }
+      }
+    }
+    else{
+      //the current song is not visible, stop the playlist
+      stopPlaylist();
+      return;
+    }
+  }	
+  if($('#libraryTable'+window.playingTableIndex+' tbody tr.'+id).length>0){
+    //make sure ID is actually in the current table and hasn't been filtered out
+    loadContent(id);
+  }
+  else{
+    stopPlaylist();
+    return;
+  }
 }
 
 function playNext(){
   var id;
+  if(window.playingTableIndex<0){
+    //mainly here for the purpose of breaking when a torrent is done playing
+    stopPlaylist();
+    return;
+  }
   if(window.isShuffle){
     //if in non random part of a random playlist
     if(window.currentPlaylistIndex < (window.playlistHistory.length-1)){   //example, playlist history is length 5, index is 3, not on last song in history
@@ -320,13 +573,20 @@ function playNext(){
       else{
         if(window.isLoop){
           //go back to beginning of playlist
+          window.loopCount++;
           window.currentPlaylistIndex=0;
           id = window.playlistHistory[window.currentPlaylistIndex];
         }
         else if (window.isLoopOnce){
-          window.isLoopOnce = false;
-          window.currentPlaylistIndex=0;
-          id = window.playlistHistory[window.currentPlaylistIndex];
+          if(window.loopCount===0){
+            window.loopCount++;
+            window.currentPlaylistIndex=0;
+            id = window.playlistHistory[window.currentPlaylistIndex];
+          }
+          else{
+            stopPlaylist();
+            return;
+          }
         }
         else{
           stopPlaylist();
@@ -348,10 +608,17 @@ function playNext(){
         if(window.isLoop){
           //go back to beginning of playlist
           id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr:first').attr('class').split(' '));
+          window.loopCount++;
         }
         else if (window.isLoopOnce){
-          window.isLoopOnce = false;
-          id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr:first').attr('class').split(' '));
+          if(window.loopCount==0){
+            id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr:first').attr('class').split(' '));
+            window.loopCount++;
+          }
+          else{
+            stopPlaylist();
+            return;
+          }
         }
         else{
           stopPlaylist();
@@ -364,11 +631,13 @@ function playNext(){
       id=getMediaID($('#libraryTable'+window.playingTableIndex+' tbody tr:first').attr('class').split(' '));
     }
   }	
-  if($('#libraryTable'+window.playingTableIndex+' tbody tr.audio.'+id).length>0){
-    loadContent(id, 'audio');
+  if($('#libraryTable'+window.playingTableIndex+' tbody tr.'+id).length>0){
+    //make sure ID is actually in the current table and hasn't been filtered out
+    loadContent(id);
   }
   else{
-    loadContent(id, 'video');
+    stopPlaylist();
+    return;
   }
 }
 
@@ -383,6 +652,8 @@ function resizeColumns(){
 }
 
 function getMediaID(classes){
+  //this looks inefficient, but the ID should always be the first class,
+  //this is just an extra precaution, I swear!
   for(i=0; i<classes.length; i++){
     if(classes[i].match(/^[0-9]+$/)){
       return classes[i];
@@ -401,43 +672,94 @@ function loadContent(id){
   }
   else{
     contentType = 'video';
-  }
-  
+  }  
   var newdiv = "";
-  if (contentType=="video"){
+  if (contentType==="video"){
     newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="static/test.webm"></video>'
     $('#videoDiv').append(newdiv);
     $("#controlsDiv").addClass('video');
     $('#videoDiv').show();
+    var title=$('#libraryTable'+window.playingTableIndex+' tbody tr.'+id+' td.mediaTitleCell div').html();
+    $('.progressTimelineTitle').html('<img class="progressTimelineIconAudio" src="static/images/mini-icon-audio.png"><img class="progressTimelineIconVideo" src="static/images/mini-icon-video.png">'+title);
+    $('.progressTimelineArtist').html('');
+    $('.progressTimelineAlbum').html('');
   }
   else{
     newdiv='<audio class="mediaPlayer audio" width="0%" height="0%"><source src="static/Kalimba.mp3"></audio>'
     $('#audioDiv').append(newdiv);
     $("#controlsDiv").removeClass('video');
+    //set up player to have proper info
+    var title=$('#libraryTable'+window.playingTableIndex+' tbody tr.'+id+' td.mediaTitleCell div').html();
+    var artist=$('#libraryTable'+window.playingTableIndex+' tbody tr.'+id+' td.mediaArtistCell div').html();
+    var album=$('#libraryTable'+window.playingTableIndex+' tbody tr.'+id+' td.mediaAlbumCell div').html();
+    $('.progressTimelineTitle').html('<img class="progressTimelineIconAudio" src="static/images/mini-icon-audio.png"><img class="progressTimelineIconVideo" src="static/images/mini-icon-video.png">'+title);
+    if(artist!=" "){
+      $('.progressTimelineArtist').html(' - '+artist);
+    }
+    else{
+      $('.progressTimelineArtist').html('');
+    }
+    if(album!=" "){
+      $('.progressTimelineAlbum').html(' - '+album);
+    }
+    else{
+      $('.progressTimelineAlbum').html('');
+    }
   }
   $('.mediaPlayer').bind('play', function(){
-    $(".playBtnImg").attr('src', 'static/images/pause.png');
-    $(".playBtnImg").addClass('pause');
-    $(".playBtnImg").removeClass('play');
+    $(".playBtnImgDiv").addClass('pause');
+    $(".playBtnImgDiv").removeClass('play');
   });
   $('.mediaPlayer').bind('pause', function(){
-    $(".playBtnImg").attr('src', 'static/images/play.png');
-    $(".playBtnImg").removeClass('pause');
-    $(".playBtnImg").addClass('play');
+    $(".playBtnImgDiv").removeClass('pause');
+    $(".playBtnImgDiv").addClass('play');
+  });
+  $('.mediaPlayer').bind('timeupdate', function(){
+    //seek bar update
+    var val = (this.currentTime/this.duration) * ($('.playbackTrack').outerWidth() - 18);
+    $('.playbackCursor').css('left', val+'px');
+    if(val>1){
+      $('.playbackTrackLeftProgress').show();
+    }
+    $('.playbackTrackCenterProgress').css('right', $('.playbackTrack').outerWidth() - val - 9);
+    $('.progressTimelineTimePlayed').html(secondstominutes(parseInt(this.currentTime)));
+    $('.progressTimelineTimeLeft').html('-'+secondstominutes(parseInt(this.duration) - parseInt(this.currentTime)));
   });
   $('.mediaPlayer').bind('ended', function(){
     playNext();
   });
+  window.playingID = id;
   $('#libraryTable'+window.playingTableIndex+' tbody tr.playing').addClass('played');
   $('#libraryTable'+window.playingTableIndex+' tbody tr.playing img').remove();
   $('#libraryTable'+window.playingTableIndex+' tbody tr.playing').removeClass('playing');
   $('#libraryTable'+window.playingTableIndex+' tbody tr.'+id).addClass('playing');
-  window.playingID = id;
   $('#libraryTable'+window.playingTableIndex+' tbody tr.playing td:first').append('<img src="static/images/status-icon-playing.png">');
+  $('.mediaPlayer').get(0).volume = (parseInt($('.volumeKnobDiv').css('left')))/93;
+  $('.playbackTrack').show()
+  $('.playbackTrackCenterProgress').css('right', $('.playbackTrack').outerWidth() - $('.playbackTrackCenterProgress').css('left'));
+  $('.playbackTrackLeftProgress').hide()
+  $('.playbackTrackRightProgress').hide()
+  $('.playbackCursor').css('left', 0+'px');
+  $('.playbackCursor').show()
+  $('.progressTimelineHeader').show();
+  $('.progressTimelineTimeLeft').show();
+  $('.progressTimelineTimePlayed').show();
   var player = $('.mediaPlayer').get(0);
   player.play();
 }
 
+
+
+
+function secondstominutes(secs)
+{
+   var mins = Math.floor(secs / 60);
+   secs = secs % 60;
+
+   return (mins < 10 ? "" + mins : mins) 
+          + ":"
+          + (secs < 10 ? "0" + secs : secs);
+}
 
 jQuery.fn.random = function() {
     var randomIndex = Math.floor(Math.random() * this.length);  

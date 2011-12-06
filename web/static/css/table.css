@@ -114,6 +114,16 @@ table.display {
 	 * then filling in the gaps with other borders.
 	 */
 }
+td {
+font-family: arial, sans-serif;
+font-size: 10pt;
+overflow: hidden;
+}
+
+.cell{
+  height: 18px;
+  overflow-y: hidden;
+}
 
 table.display thead th {
 	height: 29px;

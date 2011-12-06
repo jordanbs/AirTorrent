@@ -1,7 +1,5 @@
 import cherrypy
 import os
-import ConfigParser
-import base64
 import sqlite3
 
 
@@ -19,11 +17,11 @@ class AirTorrent:
 <script type="text/javascript" src="static/scripts/enhance.js"></script>        
 <script type="text/javascript" src="static/scripts/complete.min.js"></script>
 <script type="text/javascript" language="javascript" src="static/scripts/jquery.js"></script>
+<script type="text/javascript" language="javascript" src="static/scripts/jquery.event.drag.js"></script>
 <script type="text/javascript" language="javascript" src="static/scripts/jquery.dataTables.js"></script>
 <script type="text/javascript" language="javascript" src="static/scripts/ColReorder.js"></script>
 <script type="text/javascript" language="javascript" src="static/scripts/AirTorrentWebUI.js"></script>
 <script type="text/javascript" src="static/scripts/jQuery.fileinput.js"></script>
-<script type="text/javascript" src="static/scripts/example.js"></script>
 </head>
 <body>
 '''
@@ -40,25 +38,30 @@ class AirTorrent:
         torrentlink = 'upload?temp=0'
         audio='<div data-ajaxlink="'+audiolink+'" class="menuLinkDiv library notloaded" id="menuLinkDivAudio"><div class="menuIcon" id="iconAudioDiv"></div><div class="menuTextLink">Audio</div></div>\n'
         video='<div data-ajaxlink="'+videolink+'" data-libid="0" class="menuLinkDiv library selected loaded" id="menuLinkDivVideo"><div class="menuIcon" id="iconVideoDiv"></div><div class="menuTextLink">Video</div></div>\n'
-        torrent='<div data-ajaxlink="'+torrentlink+'" class="menuLinkDiv notloaded" id="menuLinkDivTorrent"><div class="menuIcon" id="iconTorrentDiv"></div><div class="menuTextLink">Torrent</div></div>\n'
-        value = '<div id="menuDiv">\n<div id="filterMenuDiv">'+video+audio+torrent+'</div>\n'
+        torrent='<div data-ajaxlink="'+torrentlink+'" class="menuLinkDiv torrent notloaded" id="menuLinkDivTorrent"><div class="menuIcon" id="iconTorrentDiv"></div><div class="menuTextLink">Torrent</div></div>\n'
+        value = '<div id="menuDiv">'+video+audio+torrent+'</div>\n'
         value+='''
-</div>
-<div id="contentDiv">
-</div>
+<div id="contentDiv"></div>
+
 <div id="controlsDiv">
-<img class="skipPrvBtnImg" src="static/images/skip_previous_disabled.png"/><img class="stopBtnImg" src="static/images/stop_disabled.png"/><img class="playBtnImg play enabled" src="static/images/play.png"/><img class="skipFwdBtnImg" src="static/images/skip_forward_disabled.png"/>
+<div id=controlButtons><div class="skipPrvBtnImgDiv"></div><div class="stopBtnImgDiv"></div><div class="playBtnImgDiv play enabled"></div><div class="skipFwdBtnImgDiv"></div></div>
+<div class="progressTimeline"><div class="progressTimelineHeader"><div class="progressTimelineTitle"><img class="progressTimelineIconAudio" src="static/images/mini-icon-audio.png"><img class="progressTimelineIconVideo" src="static/images/mini-icon-video.png"></div><div class="progressTimelineAlbum"></div><div class="progressTimelineArtist"></div></div><div class="progressTimelineLeftDiv"></div><div class="progressTimelineCenterDiv"></div><div class="progressTimelineRightDiv"></div><div class="progressTimelineTimePlayed">0:00</div><div class="progressTimelineTimeLeft">-0:00</div><div class="playbackTrack"><div class="playbackCursor"></div><div class="playbackTrackLeft"></div><div class="playbackTrackCenter"></div><div class="playbackTrackRight"></div><div class="playbackTrackLeftProgress"></div><div class="playbackTrackCenterProgress"></div><div class="playbackTrackRightProgress"></div></div></div>
+<div class="volumeDiv"><div class="volumeIconDiv"></div><div class="volumeTrackDiv"><div class="volumeKnobDiv"></div></div></div>
+<div class="shuffleLoopDiv"><div class="shuffleBtnDiv off"></div><div class="loopBtnDiv off"></div></div>
 </div>
+
 <div id="mediaDiv">
 <div id="videoDiv">
 </div>
 <div id="audioDiv">
+<audio class="mediaPlayer audio" width="0%" height="0%"><source src="static/Kalimba.mp3"></audio>
 </div>
 </div>
+
 </body>
 </html>
 '''
-        return value;
+        return value
     generateBody.exposed = True
     
     
@@ -97,17 +100,17 @@ class AirTorrent:
         #generate the table of library contents
         #columns will be a comma deliminated list
         if libType=="audio":
-            columns = "id,file_type,entry_title,album,artist,genre"
+            columns = "id,file_type,entry_title,title_tag,artist,album,track,duration,genre,year"
             filters = "file_type = 'audio'"
         elif libType=="video":
-            columns = "id,file_type,entry_title,album,artist,genre"
+            columns = "id,file_type,entry_title,title_tag,duration,creationTime, episode_number, season_number"
             filters = "file_type = 'video'"
         else:
+            #this is for playlists...but yet to finish that part
             columns = "id,file_type,entry_title,album,artist,genre"
             filters = "file_type = 'audio'"
         conn = sqlite3.connect('sqlitedb')
         cursor = conn.cursor()
-        columnList = columns.rsplit(',')
         table=""
         #cutting some corners here with the SQL. This is not secure, fix later!!!
         query = "SELECT "+columns+" FROM item WHERE "+filters
@@ -116,30 +119,75 @@ class AirTorrent:
         #set up the table header
         table+='<div id="containerDiv'+str(libId)+'" class="containerDiv">\n<table cellpadding="0" cellspacing="0" border="0" class="display" id="libraryTable'+str(libId)+'">'
         
-        row=cursor.fetchone()
-        if 1:
-            table+='<thead>\n'
-            table+='<th></th>\n'
-            for i in range(2, len(columnList)):
-                if type(row[i]) is int:
-                    table+='<th>'+columnList[i]+'</th>\n'
+        
+        
+        
+        
+        #set up the actual table
+        if(libType=="audio"):
+            table+='''
+<thead>
+<tr>
+<th class="playIconRow"></th>
+<th>Name</th>
+<th>Artist</th>
+<th>Album</th>
+<th>Track</th>
+<th>Time</th>
+<th>Genre</th>
+<th>Year</th>
+</tr>
+</thead>
+<tbody>
+'''
+            row=cursor.fetchone()
+            while row:
+                table+='<tr class="'+str(self.cleanCell(row[0]))+' '+str(self.cleanCell(row[1]))+'">\n'
+                table+='<td class="playIconRow"></td>\n'
+                if(row[3]):
+                    table+='<td class="mediaTitleCell"><div class="cell">'+str(self.cleanCell(row[3]))+'</div></td>\n'
                 else:
-                    table+='<th>'+columnList[i]+'</th>\n'
-            table+='</thead>\n'
-        
-        #set up the body of the table
-        table+='<tbody>\n'
-        count=0;
-        
-        while row:
-            table+='<tr class="'+str(row[0])+' '+str(row[1])+'">\n'
-            table+='<td></td>'
-            for i in range(2, len(columnList)):
-                table+='<td>'+str(row[i])+'</td>\n'
-            row = cursor.fetchone()
-            count+=1
-            table+='</tr>\n'
-        
+                    table+='<td class="mediaTitleCell"><div class="cell">'+str(self.cleanCell(row[2]))+'</div></td>\n'
+                table+='<td class="mediaArtistCell"><div class="cell">'+str(self.cleanCell(row[4]))+'</div></td>\n'
+                table+='<td class="mediaAlbumCell"><div class="cell">'+str(self.cleanCell(row[5]))+'</div></td>\n'
+                table+='<td><div class="cell">'+str(self.cleanCell(row[6]))+'</div></td>\n'
+                seconds = self.cleanCell(row[7])/1000
+                duration = "%01d:%02d" % (seconds/60, seconds%60)
+                table+='<td><div class="cell">'+duration+'</div></td>\n'
+                table+='<td><div class="cell">'+str(self.cleanCell(row[8]))+'</div></td>\n'
+                table+='<td><div class="cell">'+str(self.cleanCell(row[9]))+'</div></td>\n'
+                table+='</tr>\n'
+                row = cursor.fetchone()
+        elif(libType=="video"):
+            table+='''
+<thead>
+<tr>
+<th class="playIconRow"></th>
+<th>Name</th>
+<th>Time</th>
+<th>Date Added</th>
+<th>Episode Number</th>
+<th>Season Number</th>
+</tr>
+</thead>
+<tbody>
+'''
+            row=cursor.fetchone()
+            while row:
+                table+='<tr class="'+str(self.cleanCell(row[0]))+' '+str(self.cleanCell(row[1]))+'">\n'
+                table+='<td class="playIconRow"></td>\n'
+                if(row[3]):
+                    table+='<td class="mediaTitleCell"><div class="cell">'+str(self.cleanCell(row[3]))+'</div></td>\n'
+                else:
+                    table+='<td class="mediaTitleCell"><div class="cell">'+str(self.cleanCell(row[2]))+'</div></td>\n'
+                seconds = self.cleanCell(row[4])/1000
+                duration = "%01d:%02d" % (seconds/60, seconds%60)
+                table+='<td><div class="cell">'+duration+'</div></td>\n'
+                table+='<td><div class="cell">'+str(self.cleanCell(row[5]))+'</div></td>\n'
+                table+='<td><div class="cell">'+str(self.cleanCell(row[6]))+'</div></td>\n'
+                table+='<td><div class="cell">'+str(self.cleanCell(row[7]))+'</div></td>\n'
+                table+='</tr>\n'
+                row = cursor.fetchone()
         table+='</tbody>\n</table>\n</div>\n'
       
         return table
@@ -192,29 +240,14 @@ class AirTorrent:
     upload.exposed = True
 
     def uploadSubmit(self, myFile):
-        out = """<html>
-        <body>
-            myFile length: %s<br />
-            myFile filename: %s<br />
-            myFile mime-type: %s
-        </body>
-        </html>"""
-
-
-        # Although this just counts the file length, it demonstrates
-        # how to read large files in chunks instead of all at once.
-        # CherryPy reads the uploaded file into a temporary file;
-        # myFile.file.read reads from that.
-        size = 0
-        while True:
-            data = myFile.file.read(8192)
-            if not data:
-                break
-            size += len(data)
-
-        return out % (size, myFile.filename, myFile.content_type)
-        #return("<html><body>static/test.webm</body></html>")
-    uploadSubmit.exposed = True    
+        return("static/test.webm")
+    uploadSubmit.exposed = True
+    
+    def cleanCell(self, cell):
+        if cell==None:
+            return " ";
+        else:
+            return cell;
         
 conf = os.path.join(os.path.dirname(__file__), 'config.ini')
 
