@@ -64,7 +64,7 @@ class TorrentSessionManager(threading.Thread):
         playlist = torrent_download_manager.playlist
         return playlist
 
-    def get_chunk(torrent_info_hash, chunk):
+    def get_chunk(self, torrent_info_hash, chunk):
         try:
             torrent_download_manager = self.torrent_downloads[torrent_info_hash]
         except(KeyError):

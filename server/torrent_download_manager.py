@@ -192,7 +192,7 @@ class TorrentDownloadManager:
         
         return self.playlist
 
-    def get_chunk(chunk):
+    def get_chunk(self, chunk):
         # TODO: track where the chunk is, if it skips, then toss the transcode_object and create
         # a new one at the start of the chunk. necessary for seeking
         return self.transcode_object.get_chunk()

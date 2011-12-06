@@ -17,6 +17,8 @@ class HLSTorrentServer(BaseHTTPServer.HTTPServer):
         self.torrent_session_manager = TorrentSessionManager(self.media_save_path,
                                                              self.segment_request_path_func)
         self.torrent_session_manager.start()
+        # XXX: quick hack to test, REMOVE ME
+        self.torrent_added = False
 
     def add_torrent(self, torrent_file_path):
         # returns a dict of files to choose from
@@ -31,6 +33,8 @@ class HLSTorrentServer(BaseHTTPServer.HTTPServer):
         address, addrlength = self.socket.getsockname()
         listen_address, port = self.server_address
         # TODO: fix TranscodeObject.get_chunk() to append urls properly to get rid of junk
+        # FIXME: Don't hard code this...
+        address = "demo.airtorrent.tk"
         return ('http://%s:%d/%s.%s?junk=0' % (address, port, torrent_info_hash, enclosure))
 
     def get_chunk(self, torrent_info_hash, chunk):
@@ -39,7 +43,6 @@ class HLSTorrentServer(BaseHTTPServer.HTTPServer):
     def shutdown(self):
         self.torrent_session_manager.stop()
 
-global torrent_path
 
 class HLSTorrentRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     
@@ -48,8 +51,17 @@ class HLSTorrentRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         # XXX: quick test hack
         if 'get_playlist' in url_parts.path:
-            info_hash, video_files = self.server.add_torrent(torrent_path)
-            playlist = self.server.get_playlist(info_hash)
+            if self.server.torrent_added is False:
+                self.server.torrent_added = True
+            else:
+                logging.debug("Extra get playlist, path: %s", self.path)
+                playlist = self.server.get_playlist(self.server.info_hash)
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(playlist)
+                return
+            self.server.info_hash, video_files = self.server.add_torrent(torrent_path)
+            playlist = self.server.get_playlist(self.server.info_hash)
             self.send_response(200)
             self.end_headers()
             self.wfile.write(playlist)
@@ -85,10 +97,10 @@ class HLSTorrentRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
         server_address = ('', 8000)
         save_path = '/home/jbschne/media'
-        torrent_path = '/home/jbschne/torrents/Drive.2011.R5.DVDRip.x264-Soul.torrent'
+        torrent_path = "/home/jbschne/torrents/Who's.Harry.Crumb.1989.DVDRip.x264-DiRTY.mkv.torrent"
         httpd = HLSTorrentServer(server_address, HLSTorrentRequestHandler, save_path)
         try:
             httpd.serve_forever()
