@@ -233,8 +233,7 @@ $(document).ready(function(){
     $('#upload').hide();
     var file=this.form[1].files[0];
     if(file){
-      $('#loadWheelImg').addClass('hidden');
-      $('#upload').show();
+      return;
     }
     else{
       alert('Please choose a torrent file');
@@ -364,13 +363,22 @@ function randOrd(){
 }
 
 function torrentReturned(){
-  var myIFrame = document.getElementById('uploadIframe');
-  var content = myIFrame.contentWindow.document.body.innerHTML;
+  var file = $('#upload').get(0).form[1].files[0];
+  if(!file){
+    return;
+  }
+  var src = "";
+  if(file.fileName.length > 7){
+    src = file.fileName.substr(0, file.fileName.length-7)+'m3u8';
+  }
+  else{
+    $('#loadWheelImg').addClass('hidden');
+    $('#upload').show();
+    return;
+  }
   $('#loadWheelImg').addClass('hidden');
   $('#upload').show();
-  if(content!=""){
-      startTorrentPlayback(content);
-  }
+  startTorrentPlayback(src);
 }
 
 
@@ -381,7 +389,7 @@ function startTorrentPlayback(source){
   $('.skipFwdBtnImgDiv').removeClass('enabled');
   $('.stopBtnImgDiv').addClass('enabled');
   window.playingTableIndex = -1; //this is already done in stopPlaylist, just here for clarity purposes
-  newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="'+source+'"></video>'
+  newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="http://demo.airtorrent.tk:8000/playlist/'+source+'"></video>'
   $('#videoDiv').append(newdiv);
   $('#controlsDiv').addClass('video');
   $('#videoDiv').show();
@@ -675,7 +683,7 @@ function loadContent(id){
   }  
   var newdiv = "";
   if (contentType==="video"){
-    newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="static/test.webm"></video>'
+    newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="http://demo.airtorrent.tk:8000/playlist/library/'+id+'.m3u8"></video>'
     $('#videoDiv').append(newdiv);
     $("#controlsDiv").addClass('video');
     $('#videoDiv').show();
@@ -685,7 +693,7 @@ function loadContent(id){
     $('.progressTimelineAlbum').html('');
   }
   else{
-    newdiv='<audio class="mediaPlayer audio" width="0%" height="0%"><source src="static/Kalimba.mp3"></audio>'
+    newdiv='<audio class="mediaPlayer audio" width="0%" height="0%"><source src="http://demo.airtorrent.tk:8000/playlist/library/'+id+'.m3u8"></audio>'
     $('#audioDiv').append(newdiv);
     $("#controlsDiv").removeClass('video');
     //set up player to have proper info
