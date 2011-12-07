@@ -57,7 +57,7 @@ class TorrentSessionManager(threading.Thread):
             return None
 
         # transcoding has to start to generate the playlist
-        if not torrent_download_manager.is_transcoding:
+        if not torrent_download_manager.is_transcoding.is_set():
             torrent_download_manager.start_transcode(file_index)
         
         playlist = torrent_download_manager.playlist

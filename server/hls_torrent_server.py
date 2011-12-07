@@ -238,7 +238,10 @@ class HLSTorrentRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         playlist_url = "http://%s:%d/playlists/%s.m3u8" % (self.server.broadcast_address, port,
                                                            info_hash)
 
-        
+        # blocks the response until a playlist can be generated
+        # this will also start the transcode process
+        self.server.get_playlist(info_hash)
+
         self.send_response(200)
         self.end_headers()
         self.wfile.write(playlist_url)

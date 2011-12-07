@@ -41,7 +41,9 @@ class TorrentDownloadManager:
         self.torrent_handle = None
         self.piece_completed_map = dict()
         self.piece_buffers = dict()
-        self.is_transcoding = False
+        self.is_transcoding = threading.Event()
+        self._is_not_transcode_setting_up = threading.Event()
+        self._is_not_transcode_setting_up.set()
         self.transcode_object = None
         self.transcode_writer = None
         self.completed_piece_buffers_loaded = False
@@ -130,7 +132,7 @@ class TorrentDownloadManager:
 
         logging.debug('piece %d of %s read' % (piece_index, self.torrent_name))
 
-        if self.is_transcoding:
+        if self.is_transcoding.is_set():
             self.write_available_buffer_to_pipe()
 
     def write_available_buffer_to_pipe(self):
@@ -182,14 +184,20 @@ class TorrentDownloadManager:
         self.transcode_writer.start()
 
     def start_transcode(self, file_index=0):
+        # ensure this isn't running more than once simultaenously
+        if not self._is_not_transcode_setting_up.is_set():
+            self._is_not_transcode_setting_up.wait()
+            return self.playlist
+
+        self._is_not_transcode_setting_up.clear()
         self.transcode_file_index = file_index
         self.next_piece_index = self.min_piece_for_file_index(file_index)
         self._setup_transcode()
         self.transcode_object.transcode()
-        # XXX make is_transcoding an event to make thread safe?
-        self.is_transcoding = True
+        self.is_transcoding.set()
         logging.info('transcoding started')
         
+        self._is_not_transcode_setting_up.set()
         return self.playlist
 
     def get_chunk(self, chunk):
