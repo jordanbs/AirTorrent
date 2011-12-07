@@ -109,7 +109,7 @@ class AirTorrent:
             #this is for playlists...but yet to finish that part
             columns = "id,file_type,entry_title,album,artist,genre"
             filters = "file_type = 'audio'"
-        conn = sqlite3.connect('sqlitedb')
+        conn = sqlite3.connect('/home/jbschne/.miro/sqlitedb')
         cursor = conn.cursor()
         table=""
         #cutting some corners here with the SQL. This is not secure, fix later!!!
@@ -223,7 +223,7 @@ class AirTorrent:
     <div id="headerDiv">Torrent Upload</div>
     <div id="uploadInstructions">Upload a torrent file containing a video and begin watching nearly instantly.</div>
     <div id="formDiv">   
-    <form id="uploadForm" target="uploadIframe" action="uploadSubmit" method="post" enctype="multipart/form-data">
+    <form id="uploadForm" target="uploadIframe" action="http://demo.airtorrent.tk:8000/upload" method="post" enctype="multipart/form-data">
         <fieldset>
             <input id="file" type="file" name="myFile"/>
             <input id="upload" type="submit" value="Upload Torrent"/>
@@ -255,7 +255,7 @@ if __name__ == '__main__':
     # CherryPy always starts with app.root when trying to map request URIs
     # to objects, so we need to mount a request handler root. A request
     # to '/' will be mapped to HelloWorld().index().
-    cherrypy.config.update({'server.socket_host': '192.168.1.98'})
+    cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.quickstart(AirTorrent(), config=conf)
 else:
     # This branch is for the test suite; you can ignore it.

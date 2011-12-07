@@ -57,12 +57,20 @@ class TorrentSessionManager(threading.Thread):
             return None
 
         # transcoding has to start to generate the playlist
-        # FIXME: threading issue here... for some reason this is blocking the download from starting
         if not torrent_download_manager.is_transcoding:
             torrent_download_manager.start_transcode(file_index)
         
         playlist = torrent_download_manager.playlist
+        logging.debug('Successfully retreveid playlist for info_hash %s', torrent_info_hash)
         return playlist
+
+    def get_playlist_by_name(self, torrent_name, file_index=0):
+        logging.debug('Getting playlist %s by name' % torrent_name)
+        for torrent_download_manager in self.torrent_downloads.values():
+            if torrent_download_manager.torrent_name == torrent_name:
+                return self.get_playlist(torrent_download_manager.torrent_info_hash, file_index)
+        logging.warn('Torrent name is invalid')
+        return None
 
     def get_chunk(self, torrent_info_hash, chunk):
         try:

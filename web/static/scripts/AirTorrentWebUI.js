@@ -389,7 +389,7 @@ function startTorrentPlayback(source){
   $('.skipFwdBtnImgDiv').removeClass('enabled');
   $('.stopBtnImgDiv').addClass('enabled');
   window.playingTableIndex = -1; //this is already done in stopPlaylist, just here for clarity purposes
-  newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="http://demo.airtorrent.tk:8000/playlist/'+source+'"></video>'
+  newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="http://demo.airtorrent.tk:8000/playlists/'+source+'"></video>'
   $('#videoDiv').append(newdiv);
   $('#controlsDiv').addClass('video');
   $('#videoDiv').show();
@@ -683,7 +683,7 @@ function loadContent(id){
   }  
   var newdiv = "";
   if (contentType==="video"){
-    newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="http://demo.airtorrent.tk:8000/playlist/library/'+id+'.m3u8"></video>'
+    newdiv='<video class="mediaPlayer video" width="100%" height="100%"><source src="http://demo.airtorrent.tk:8000/playlists/library/'+id+'.m3u8"></video>'
     $('#videoDiv').append(newdiv);
     $("#controlsDiv").addClass('video');
     $('#videoDiv').show();
@@ -693,7 +693,7 @@ function loadContent(id){
     $('.progressTimelineAlbum').html('');
   }
   else{
-    newdiv='<audio class="mediaPlayer audio" width="0%" height="0%"><source src="http://demo.airtorrent.tk:8000/playlist/library/'+id+'.m3u8"></audio>'
+    newdiv='<audio class="mediaPlayer audio" width="0%" height="0%"><source src="http://demo.airtorrent.tk:8000/playlists/library/'+id+'.m3u8"></audio>'
     $('#audioDiv').append(newdiv);
     $("#controlsDiv").removeClass('video');
     //set up player to have proper info
