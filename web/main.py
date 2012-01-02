@@ -1,22 +1,23 @@
 import cherrypy
 import os
 import sqlite3
-import mako
+import mako.lookup
+import mako.template
 
 class AirTorrent:
     def __init__(self):
-        mako_lookup = TemplateLookup(directories=['.'])
-        self.main_tpl = Template(filename='/main.tpl',
-                                 module_directory='./templates',
-                                 lookup=mako_lookup)
+        mako_lookup = mako.lookup.TemplateLookup(directories=['templates'])
+        self.main_tpl = mako.template.Template(filename='templates/main.tpl',
+                                               module_directory='/tmp',
+                                               lookup=mako_lookup)
 
     def index(self):
         stuff = {
-            audiolink: 'libraryDiv?libType=audio',
-            videolink: 'libraryDiv?libType=video',
-            torrentlink: 'upload?temp=0'
+            'audio_link': 'libraryDiv?libType=audio',
+            'video_link': 'libraryDiv?libType=video',
+            'torrent_link': 'upload?temp=0'
         }
-        return self.main_tpl.render(stuff)
+        return self.main_tpl.render(**stuff)
     index.exposed = True
     
     def mediaDiv(self, source = None): 

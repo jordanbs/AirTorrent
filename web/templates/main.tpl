@@ -15,13 +15,13 @@
 </head>
 <body>
 <div id="menuDiv">
-  <div data-ajaxlink="'${audioLink}'" class="menuLinkDiv library notloaded" id="menuLinkDivAudio">
+  <div data-ajaxlink="'${audio_link}'" class="menuLinkDiv library notloaded" id="menuLinkDivAudio">
     <div class="menuIcon" id="iconAudioDiv"></div>
     <div class="menuTextLink">Audio</div></div>
-    <div data-ajaxlink="${videoLink}" data-libid="0" class="menuLinkDiv library selected loaded" id="menuLinkDivVideo">
+    <div data-ajaxlink="${video_link}" data-libid="0" class="menuLinkDiv library selected loaded" id="menuLinkDivVideo">
       <div class="menuIcon" id="iconVideoDiv"></div>
       <div class="menuTextLink">Video</div></div>
-    <div data-ajaxlink="'${torrentLink}'" class="menuLinkDiv torrent notloaded" id="menuLinkDivTorrent">
+    <div data-ajaxlink="'${torrent_link}'" class="menuLinkDiv torrent notloaded" id="menuLinkDivTorrent">
       <div class="menuIcon" id="iconTorrentDiv"></div>
       <div class="menuTextLink">Torrent</div></div>
     </div>
