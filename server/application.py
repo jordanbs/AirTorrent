@@ -1,4 +1,5 @@
 import logging
+import cherrypy
 
 from miro import app
 from miro import startup
@@ -8,7 +9,7 @@ from miro import appconfig
 from miro import startfrontend
 from miro.frontends.shell import application as shell_app
 
-import hls_torrent_server as hls_server
+import hls_server
 
 def empty(a):
     return ''
@@ -23,13 +24,15 @@ def run_application():
     startup.startup()
     
     logging.basicConfig(level=logging.DEBUG)
-    server_address = ('', 8000)
     save_path = '/home/jbschne/media'
-    httpd = hls_server.HLSTorrentServer(server_address, hls_server.HLSTorrentRequestHandler, save_path)
+    httpd = hls_server.HLSTorrentServer(save_path)
     try:
-        httpd.serve_forever()
+        #TODO: Really, stop doing these hard coded strings. make a config goddammit.
+        cherrypy.config.update('/home/jbschne/airtorrent-env/src/AirTorrent/server/config.ini')
+        cherrypy.quickstart(httpd) 
     except (KeyboardInterrupt, SystemExit):
-        httpd.shutdown()
+        pass
+        #httpd.shutdown()
     print 'startup exit'
 
 
