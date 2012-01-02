@@ -19,11 +19,17 @@ except OSError:
     os.mkdir(dst_dir)
     pass
 
-code_files = ['application.py', 'hls_server.py', 'miro_library_manager.py',
-              'torrent_download_manager.py', 'torrent_session_manager.py']
+server_code_files = ['application.py', 'hls_server.py', 'miro_library_manager.py',
+                     'torrent_download_manager.py', 'torrent_session_manager.py']
+
+web_code_files = ['web.py']
        
-for code_file in code_files:
+for code_file in server_code_files:
     code_file = os.path.join('server', code_file)
+    shutil.copy(code_file, dst_dir)
+
+for code_file in web_code_files:
+    code_file = os.path.join('web', code_file)
     shutil.copy(code_file, dst_dir)
 
 #distutils.core.setup(name=package_name,

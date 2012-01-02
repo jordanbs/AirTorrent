@@ -10,6 +10,7 @@ from miro import startfrontend
 from miro.frontends.shell import application as shell_app
 
 import hls_server
+import web
 
 def empty(a):
     return ''
@@ -25,7 +26,7 @@ def run_application():
     
     logging.basicConfig(level=logging.DEBUG)
     save_path = '/home/jbschne/media'
-    httpd = hls_server.HLSTorrentServer(save_path)
+    httpd = web.AirTorrent(save_path)
     try:
         #TODO: Really, stop doing these hard coded strings. make a config goddammit.
         cherrypy.config.update('/home/jbschne/airtorrent-env/src/AirTorrent/server/config.ini')
