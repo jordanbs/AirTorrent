@@ -8,7 +8,7 @@ import Queue
 import time
 
 import libtorrent as lt
-from miro import transcode
+import transcode
 
 class TorrentDownloadManager:
     '''
