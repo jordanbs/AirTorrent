@@ -27,15 +27,14 @@ def run_application():
     #startup.startup()
     
     logging.basicConfig(level=logging.DEBUG)
-    save_path = '/Users/jbschne/Downloads'
+    save_path = ''
     httpd = hls_server.HLSTorrentServer(save_path)
     try:
         #TODO: Really, stop doing these hard coded strings. make a config goddammit.
         cherrypy.config.update('config.ini')
         cherrypy.quickstart(httpd) 
     except (KeyboardInterrupt, SystemExit):
-        pass
-        #httpd.shutdown()
+        httpd.shutdown()
     print 'startup exit'
 
 '''
