@@ -72,8 +72,8 @@ class Torrent(object):
 
 class HLSTorrentServer(object):
 
-    def __init__(self, media_path, broadcast_address):
-        self.hls_torrent_session = hlsts.HLSTorrentSession(media_path, broadcast_address)
+    def __init__(self, hls_torrent_session):
+        self.hls_torrent_session = hls_torrent_session
         
         self.playlist = Playlist(self.hls_torrent_session)
         self.segments = Segment(self.hls_torrent_session)
@@ -96,10 +96,24 @@ class HLSTorrentServer(object):
             </body></html>
             """
 
+class HLSTorrentPlugin(cherrypy.process.plugins.SimplePlugin):
+
+    def exit(self):
+        self.hls_torrent_session.shutdown()
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     config = 'config.ini'
     cherrypy.config.update(config)
-    hls_torrent_server = HLSTorrentServer(cherrypy.config['torrent_save_dir'],
-                                          cherrypy.config['broadcast_addr'])
+
+    media_path = cherrypy.config['torrent_save_dir']
+    broadcast_address = cherrypy.config['broadcast_addr']
+    hls_torrent_session = hlsts.HLSTorrentSession(media_path, broadcast_address)
+
+    hls_torrent_plugin = HLSTorrentPlugin(cherrypy.engine)
+    hls_torrent_plugin.hls_torrent_session = hls_torrent_session
+    cherrypy.engine.hls_torrent_plugin = hls_torrent_plugin
+    cherrypy.engine.hls_torrent_plugin.subscribe()
+
+    hls_torrent_server = HLSTorrentServer(hls_torrent_session)
     cherrypy.quickstart(hls_torrent_server, '/', config)
