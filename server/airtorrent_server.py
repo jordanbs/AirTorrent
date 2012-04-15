@@ -30,6 +30,10 @@ class Segment(object):
     exposed = True
 
     def GET(self, infohash, junk, chunk):
+        ext = '.ts'
+        if infohash.endswith(ext):
+            infohash = infohash[:-len(ext)]
+
         chunk = int(chunk)
         segment_file = self.hls_torrent_session.get_chunk(infohash, chunk)
         if not segment_file:
@@ -56,6 +60,7 @@ class Torrent(object):
         if str(torrent_file.content_type) != 'application/x-bittorrent':
             raise cherrypy.HTTPError(415)
         
+        data = torrent_file.file.read()
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         temp_file.write(data)
         temp_file.close()
@@ -98,7 +103,7 @@ class HLSTorrentPlugin(cherrypy.process.plugins.SimplePlugin):
         self.hls_torrent_session.shutdown()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     config = 'config.ini'
     cherrypy.config.update(config)
 
