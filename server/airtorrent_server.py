@@ -1,4 +1,5 @@
 import cherrypy
+import simplejson as json
 import logging
 import tempfile
 
@@ -11,7 +12,6 @@ class Playlist(object):
     exposed = True
 
     def GET(self, infohash):
-        import ipdb; ipdb.set_trace()
         ext = '.m3u8'
         if infohash.endswith(ext):
             infohash = infohash[:-len(ext)]
@@ -53,21 +53,17 @@ class Torrent(object):
     exposed = True
 
     def POST(self, torrent_file):
-        out = """<html>
-        <body>
-            torrent_file filename: %s<br />
-            torrent_file mime-type: %s<br />
-        </body>
-        </html>"""
-
-        data = torrent_file.file.read()
-    
+        if str(torrent_file.content_type) != 'application/x-bittorrent':
+            raise cherrypy.HTTPError(415)
+        
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         temp_file.write(data)
         temp_file.close()
 
-        self.hls_torrent_session.add_torrent(temp_file.name)
-        return out % (temp_file.name, torrent_file.content_type)
+        infohash, video_files = self.hls_torrent_session.add_torrent(temp_file.name)
+        url = 'http://%s/playlist/%s.m3u8' % (cherrypy.config['broadcast_addr'], infohash)
+        #TODO: Make appropriate for multiple video files
+        return json.dumps({'playlistUrl': url})
 
 
 class HLSTorrentServer(object):
