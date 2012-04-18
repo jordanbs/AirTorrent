@@ -1,4 +1,5 @@
 import cherrypy
+import os.path
 import simplejson as json
 import logging
 import tempfile
@@ -72,7 +73,6 @@ class Torrent(object):
 
 
 class HLSTorrentServer(object):
-
     def __init__(self, hls_torrent_session):
         self.hls_torrent_session = hls_torrent_session
         
@@ -85,17 +85,9 @@ class HLSTorrentServer(object):
     exposed = True
 
     def GET(self):
-        return """
-            <html><body>
-                <h2>Upload a file</h2>
-                    <form action="torrent" method="post" enctype="multipart/form-data">
-                        filename: <input type="file" name="torrent_file" /><br />
-                        <input type="submit" />
-                    </form>
-                <h2>Download a file</h2>
-                <a href='download'>This one</a>
-            </body></html>
-            """
+        root = cherrypy.request.config['tools.staticdir.root']
+        main = os.path.join(root, 'main.html')
+        return cherrypy.lib.static.serve_file(main)
 
 class HLSTorrentPlugin(cherrypy.process.plugins.SimplePlugin):
 
@@ -103,7 +95,7 @@ class HLSTorrentPlugin(cherrypy.process.plugins.SimplePlugin):
         self.hls_torrent_session.shutdown()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     config = 'config.ini'
     cherrypy.config.update(config)
 
